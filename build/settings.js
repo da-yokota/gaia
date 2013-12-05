@@ -298,6 +298,7 @@ function execute(options) {
    'tethering.wifi.security.password': '1234567890',
    'tethering.wifi.connectedClients': 0,
    'tethering.usb.connectedClients': 0,
+   'theme.skin': 'skin-default',
    'time.clock.automatic-update.enabled': true,
    'time.timezone.automatic-update.enabled': true,
    'time.timezone': null,

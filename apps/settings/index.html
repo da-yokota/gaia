@@ -9,6 +9,9 @@
     <script defer="" src="/shared/js/dump.js"></script>
     <script defer="" src="/shared/js/settings_url.js"></script>
 
+    <script defer src="shared/js/settings_listener.js"></script>
+    <script defer src="shared/js/change_theme.js"></script>
+
     <!-- Common style -->
     <link rel="stylesheet" type="text/css" href="shared/style/headers.css">
     <link rel="stylesheet" type="text/css" href="shared/style/switches.css">
@@ -113,6 +116,7 @@
     <link rel="import" href="/elements/sim_manager.html">
     <link rel="import" href="/elements/homescreen_details.html">
     <link rel="import" href="/elements/homescreen.html">
+    <link rel="import" href="/elements/theme.html">
     <link rel="import" href="/elements/keyboard.html">
     <link rel="import" href="/elements/keyboard_enabled_default.html">
     <link rel="import" href="/elements/keyboard_selection_add_more.html">
@@ -240,6 +244,8 @@
     <section is="homescreen-details" role="region" id="homescreen-details"></section>
     <!-- Personalization :: Homescreen -->
     <section is="homescreen" role="region" id="homescreen" data-require-sub-panels="true"></section>
+    <!-- Personalization :: Theme -->
+    <section is="theme" role="region" id="theme"></section>
     <!-- Personalization :: Keyboard :: Select Keyboard :: Add More Keyboards -->
     <section is="keyboard-selection-addMore" role="region" id="keyboard-selection-addMore"></section>
     <!-- Personalization :: Keyboard :: Select Keyboard -->
@@ -387,6 +393,9 @@
           </li>
           <li id="homescreen-section" hidden>
             <a id="menuItem-homescreen" class="menu-item" href="#homescreen" data-l10n-id="homescreen">Homescreen</a>
+          </li>
+          <li id="theme-section">
+            <a id="menuItem-theme" class="menu-item" href="#theme" data-l10n-id="theme">Theme</a>
           </li>
           <li>
             <small id="keyboard-desc" class="menu-item-desc"></small>
