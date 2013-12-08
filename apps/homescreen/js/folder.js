@@ -6,6 +6,14 @@ var FolderManager = (function() {
   var uuidBlob = new Blob();
   var state; // none/pending/done
 
+  function _setMark(elem) {
+    elem.classList.add('hover');
+  }
+
+  function _unsetMark(elem) {
+    elem.classList.remove('hover');
+  }
+
   function _calcRange(elem) {
     var rect = elem.getBoundingClientRect();
     range = {left: rect.left + 15, right: rect.right - 15,
@@ -74,6 +82,7 @@ var FolderManager = (function() {
       break;
     case 'done':
       // The folder is already marked and unmark.
+      _unsetMark(folderElem);
       _clearState();
       console.log('state=done, set none');
       break;
@@ -87,6 +96,7 @@ var FolderManager = (function() {
     switch (state) {
     case 'pending':
       if (_isRange(x, y)) {
+        _setMark(elem);
         folderElem = elem;
         state = 'done';
         console.log('state=pending, set done x=' + x + ' y=' + y);
@@ -98,6 +108,7 @@ var FolderManager = (function() {
       }
     case 'done':
       if (_isUnRange(x, y)) {
+        _unsetMark(folderElem);
         _clearState();
         console.log('state=done, set none x=' + x + ' y=' + y);
       } else {

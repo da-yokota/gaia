@@ -125,3 +125,22 @@ body[data-dragging] #footer li[data-is-collection = 'true'].hover > span.options
 .evmeScope #collection[data-mode='edit'] .evme-apps ul.static li span.remove {
   display: block;
 }
+
+body[data-dragging] ol > li:not([data-is-collection = 'true']).hover > div::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 6.4rem;
+  height: 8.2rem;
+  margin: 0.4rem 0 0 -3.2rem;
+  background: rgba(0, 0, 0, .1);
+  border: 0.2rem solid rgba(255, 255, 255, .8);
+  border-radius: 10%;
+  z-index: 10;
+  -moz-box-sizing: border-box;
+  background-clip: content-box;
+  transition: transform 150ms ease-in-out;
+  transform: scale(1.2);
+  opacity: 0.8;
+}
