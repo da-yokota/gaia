@@ -1,5 +1,29 @@
 'use strict';
 
+var Folder = function Folder(params, cb) {
+  GridItem.call(this, params);
+
+  this.iconable = false;
+  this.type = GridItemsFactory.TYPE.FOLDER;
+  this.hideFromGrid = !!params.hideFromGrid;
+  this.providerId = params.provider_id || params.id;
+  this.holdApps = params.holdApps;
+};
+
+Folder.prototype = {
+  __proto__: GridItem.prototype,
+
+  launch: function sc_launch() {
+    var features = this.getFeatures();
+    // Enriching features...
+    features.id = this.id;
+
+    window.dispatchEvent(new CustomEvent('folderlaunch', {
+      'detail': features
+    }));
+  }
+};
+
 var FolderManager = (function() {
   var dragElem, folderElem, range;
   var sx, sy;
@@ -122,6 +146,58 @@ var FolderManager = (function() {
     }
   }
 
+  function _makeFolder(callback) {
+    if (state !== 'done') {
+      console.log('state is not done');
+      return false;
+    }
+    var dragIcon = GridManager.getIcon(dragElem.dataset);
+    var folderIcon = GridManager.getIcon(folderElem.dataset);
+    var rect = folderElem.getBoundingClientRect(),
+        centerX = rect.left + rect.width / 2,
+        centerY = rect.top + rect.height / 2;
+
+    dragIcon.onDragStop(function() {
+      // Set flag for these icons in a folder and not showing on pages.
+
+      if (_isFolder(folderElem)) {
+         // Add the app in a folder
+        dragIcon.descriptor.inFolder = true;
+        folderIcon.getDescriptor().holdApps.push(dragIcon.descriptor);
+        dragIcon.remove();
+      } else {
+       // Make a folder
+        var uuid = _generateUUID();
+        dragIcon.descriptor.inFolder = true;
+        folderIcon.descriptor.inFolder = true;
+        var holdApps = [dragIcon.descriptor, folderIcon.descriptor];
+        var params = {
+          'id': uuid,
+          'bookmarkURL': uuid,
+          'name': 'Folder',
+          'icon': '',
+          'iconable': false,
+          'type': GridItemsFactory.TYPE.FOLDER,
+          'holdApps': holdApps
+        };
+        var folder = GridItemsFactory.create(params);
+        // Prepare params for install a folder
+        var pageHelper = GridManager.pageHelper;
+        var pageNumber = pageHelper.getCurrentPageNumber();
+        var page = pageHelper.getCurrent();
+        var iconIndex = page.getIconIndex(folderElem);
+        var gridPosition = {page: pageNumber, index: iconIndex};
+        // Remove icons node that is in folder from HTML
+        dragIcon.remove();
+        folderIcon.remove();
+        // Append a folder
+        GridManager.installAt(folder, pageNumber, gridPosition);
+      }
+      callback();
+    }, centerX - sx, centerY - sy, 0);
+    return true;
+  }
+
   return {
     init: function(elem, x, y) {
       if (!_isCollection(elem) || !_isFolder(elem)) {
@@ -135,6 +211,7 @@ var FolderManager = (function() {
       }
     },
     startMarkFolder: _startMarkFolder,
-    updateMarkFolder: _updateMarkFolder
+    updateMarkFolder: _updateMarkFolder,
+    makeFolder: _makeFolder
   };
 })();

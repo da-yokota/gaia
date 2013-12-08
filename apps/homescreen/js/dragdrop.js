@@ -244,6 +244,10 @@ var DragDropManager = (function() {
    *                  finishes
    */
   function sendDragStopToDraggableIcon(callback) {
+    if (FolderManager.makeFolder(callback)) {
+      return;
+    }
+
     if (draggableIconIsCollection ||
           overlapElem.dataset.isCollection !== 'true') {
       // If we are dragging an app or bookmark or we aren't over a collection

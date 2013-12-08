@@ -4,12 +4,15 @@ var GridItemsFactory = {
   TYPE: {
     APP: 'app',
     BOOKMARK: 'bookmark',
-    COLLECTION: 'collection'
+    COLLECTION: 'collection',
+    FOLDER: 'folder'
   },
   create: function gif_create(params) {
     var item = Bookmark;
     if (params.type === GridItemsFactory.TYPE.COLLECTION) {
       item = Collection;
+    } else if (params.type === GridItemsFactory.TYPE.FOLDER) {
+      item = Folder;
     }
 
     return new item(params);

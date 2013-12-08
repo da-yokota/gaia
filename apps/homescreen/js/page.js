@@ -108,6 +108,8 @@ Icon.prototype = {
       dataset.isCollection = true;
       dataset.collectionId = descriptor.id;
       dataset.collectionName = descriptor.name;
+    } else if (descriptor.type === GridItemsFactory.TYPE.FOLDER) {
+      dataset.isFolder = true;
     }
 
     var localizedName = this.getName();

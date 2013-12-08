@@ -1167,7 +1167,8 @@ var GridManager = (function() {
       isHosted: isHosted(app),
       hasOfflineCache: hasOfflineCache(app),
       type: app.type,
-      id: app.id
+      id: app.id,
+      holdApps: app.holdApps || []
     };
 
     if (haveLocale) {
@@ -1488,6 +1489,30 @@ var GridManager = (function() {
       extra = extra || {};
 
       processApp(app, null, gridPageOffset);
+
+      if (extra.callback) {
+        extra.callback();
+      }
+    },
+
+    installAt: function gm_installAt(app, gridPageOffset, gridPosition, extra) {
+      extra = extra || {};
+
+      processApp(app, null, gridPageOffset, gridPosition);
+
+      if (app.type === GridItemsFactory.TYPE.COLLECTION) {
+        window.dispatchEvent(new CustomEvent('collectionInstalled', {
+          'detail': {
+            'collection': app
+          }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('appInstalled', {
+          'detail': {
+            'app': app
+          }
+        }));
+      }
 
       if (extra.callback) {
         extra.callback();
