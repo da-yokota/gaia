@@ -85,6 +85,9 @@ Icon.prototype = {
      * </li>
      */
 
+    if (this.descriptor.inFolder) {
+      return;
+    }
     var container = this.container = document.createElement('li');
     var dataset = container.dataset;
 
@@ -424,6 +427,9 @@ Icon.prototype = {
   update: function icon_update(descriptor, app) {
     this.app = app;
     this.updateAppStatus(app);
+    if (this.descriptor.inFolder) {
+      return;
+    }
     var oldDescriptor = this.descriptor;
     this.descriptor = descriptor;
     descriptor.removable === true ? this.appendOptions() : this.removeOptions();

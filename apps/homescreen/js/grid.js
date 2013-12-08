@@ -1004,6 +1004,7 @@ var GridManager = (function() {
    */
   function convertDescriptorsToIcons(pageState) {
     var icons = pageState.icons;
+    var icon, holdApps, ii;
     for (var i = 0; i < icons.length; i++) {
       var descriptor = icons[i];
       // navigator.mozApps backed app will objects will be handled
@@ -1027,10 +1028,25 @@ var GridManager = (function() {
           descriptor.localizedName = _(app.manifest.name);
         }
         bookmarksByOrigin[app.origin] = app;
+      } else if (descriptor.type === GridItemsFactory.TYPE.FOLDER) {
+        if (descriptor.manifestURL) {
+          descriptor.id = descriptor.manifestURL = descriptor.bookmarkURL;
+        }
+        app = GridItemsFactory.create(descriptor);
+        bookmarksByOrigin[app.origin] = app;
       }
 
-      var icon = icons[i] = new Icon(descriptor, app);
-      rememberIcon(icon);
+      icon = icons[i] = new Icon(descriptor, app);
+      if (descriptor.type === GridItemsFactory.TYPE.FOLDER) {
+        rememberIcon(icon);
+        holdApps = descriptor.holdApps;
+        for (ii = 0; ii < holdApps.length; ii++) {
+          icon = new Icon(holdApps[ii], null);
+          rememberIcon(icon);
+        }
+      } else {
+        rememberIcon(icon);
+      }
     }
     return icons;
   }
