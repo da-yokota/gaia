@@ -193,6 +193,7 @@ var DragDropManager = (function() {
    * {Object} This is the DOMElement which was tapped and hold
    */
   function onStart(elem) {
+    FolderManager.init(elem, sx, sy);
     overlapElem = elem;
     draggableIcon = GridManager.getIcon(elem.dataset);
     draggableIconIsCollection = overlapElem.dataset.isCollection === 'true';
@@ -332,6 +333,11 @@ var DragDropManager = (function() {
       return;
     }
 
+    if (FolderManager.updateMarkFolder(overlapElem, cx, cy)) {
+      // Do not process following icon layout when maked a folder.
+      return;
+    }
+
     clearOverCollectionTimeout();
 
     var classList = overlapElem.classList;
@@ -465,6 +471,7 @@ var DragDropManager = (function() {
           y < rectObject.top || y > rectObject.bottom) {
         newOverlapElem = document.elementFromPoint(x, y);
         addHoverClass(newOverlapElem);
+        FolderManager.startMarkFolder(newOverlapElem);
       }
     }
 
