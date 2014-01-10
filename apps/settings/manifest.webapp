@@ -15,7 +15,7 @@
     "device-storage:pictures":{ "access": "readonly" },
     "device-storage:music":{ "access": "readonly" },
     "device-storage:videos":{ "access": "readonly" },
-    "device-storage:sdcard":{ "access": "readonly" },
+    "device-storage:sdcard":{ "access": "readwrite" },
     "device-storage:apps":{ "access": "readonly" },
     "webapps-manage":{},
     "open-remote-window":{},
@@ -30,7 +30,8 @@
     "idle":{},
     "telephony":{},
     "audio-channel-notification":{},
-    "downloads":{}
+    "downloads":{},
+    "nfc":{ "access": "readonly" }
   },
   "activities": {
     "configure": {
@@ -66,7 +67,7 @@
   },
   "datastores-access": {
     "download_store": {
-      "access": "readwrite",
+      "readonly": false,
       "description": "Stores download finished"
     }
   },

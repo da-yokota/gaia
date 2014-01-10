@@ -35,9 +35,28 @@ DownloadNotification.prototype = {
   },
 
   /**
+   * This method is in charge of incrementing/decrementing the system downloads
+   * according to previous and current states
+   *
+   * @param {String} Previous state.
+   * @param {String} New state.
+   */
+  _updateSystemDownloads: function dn_updateSystemDownloads(prevState, 
+                                                            newState) {
+    if (prevState !== newState) {
+      if (newState === 'downloading') {
+        StatusBar.incSystemDownloads();
+      } else if (prevState === 'downloading') {
+        StatusBar.decSystemDownloads();
+      }
+    }
+  },
+
+  /**
    * It updates the notification when the download state changes.
    */
   _update: function dn_update() {
+    this._updateSystemDownloads(this.state, this.download.state);
     var noNotify = this._wontNotify(this.state, this.download.state);
     var state = this.state = this.download.state;
     var info = this._getInfo();
@@ -58,7 +77,7 @@ DownloadNotification.prototype = {
    * This method stores complete downloads to share them with the download list
    * in settings app
    *
-   * @param {Object} The download object provided by the API
+   * @param {Object} The download object provided by the API.
    */
   _storeDownload: function dn_storeDownload(download) {
     var req = DownloadStore.add(download);
@@ -167,11 +186,11 @@ DownloadNotification.prototype = {
 
       case 'succeeded':
         // Attempts to open the file
-        var req = DownloadHelper.launch(this.download);
+        var download = this.download;
+        var req = DownloadHelper.launch(download);
 
         req.onerror = function req_onerror() {
-          // TODO - Implement the flow explained in the bug 940294
-          alert(req.error.code + ' ' + req.error.message);
+          DownloadHelper.handlerError(req.error, download);
         };
 
         cb();

@@ -318,6 +318,22 @@ function CompositeIncomingAccount(
    *     support hierarchies, but we just declare that those servers are not
    *     acceptable for use.
    *   }
+   *   @param[overflowMap @dictof[
+   *     @key[uidl String]
+   *     @value[@dict[
+   *       @key[size Number]
+   *     ]]
+   *   ]]{
+   *     The list of messages that will NOT be downloaded by a sync
+   *     automatically, but instead need to be fetched with a "Download
+   *     more messages..." operation. (POP3 only.)
+   *   }
+   *   @param[uidlMap @dictof[
+   *     @key[uidl String]
+   *     @value[headerID String]
+   *   ]]{
+   *     A mapping of UIDLs to message header IDs. (POP3 only.)
+   *   }
    * ]{
    *   Meta-information about the account derived from probing the account.
    *   This information gets flushed on database upgrades.
@@ -6769,10 +6785,11 @@ return {
 
 define('pop3/pop3',['module', 'exports', 'rdcommon/log', 'net', 'crypto',
         './transport', 'mailparser/mailparser', '../mailapi/imap/imapchew',
+        '../mailapi/syncbase',
         './mime_mapper', '../mailapi/allback'],
 function(module, exports, log, net, crypto,
          transport, mailparser, imapchew,
-         mimeMapper, allback) {
+         syncbase, mimeMapper, allback) {
 
   /**
    * The Pop3Client modules and classes are organized according to
@@ -6821,20 +6838,6 @@ function(module, exports, log, net, crypto,
     setTimeout = set;
     clearTimeout = clear;
   }
-
-  // CONSTANTS:
-
-  // If a message is larger than INFER_ATTACHMENTS_SIZE bytes, guess
-  // that it has an attachment.
-  var INFER_ATTACHMENTS_SIZE = 512 * 1024;
-
-  // Attempt to fetch SNIPPET_SIZE_GOAL bytes for each message to
-  // generate the snippet.
-  var SNIPPET_SIZE_GOAL = 4 * 1024; // in bytes
-  // Based on SNIPPET_SIZE_GOAL, calculate approximately how many
-  // lines we'll need to fetch in order to roughly retrieve
-  // SNIPPET_SIZE_GOAL bytes.
-  var LINES_TO_FETCH_FOR_SNIPPET = Math.floor(SNIPPET_SIZE_GOAL / 80);
 
   /***************************************************************************
    * Pop3Client
@@ -7277,7 +7280,13 @@ function(module, exports, log, net, crypto,
         var number = words[0];
         var size = parseInt(words[1], 10);
         this.idToSize[number] = size;
-        allMessages.push({
+        // Push the message onto the front, so that the last line
+        // becomes the first message in allMessages. Most POP3 servers
+        // seem to return messages in ascending date order, so we want
+        // to process the newest messages first. (Tested with Dovecot,
+        // Gmail, and AOL.) The resulting list here contains the most
+        // recent message first.
+        allMessages.unshift({
           uidl: this.idToUidl[number],
           size: size,
           number: number
@@ -7290,21 +7299,39 @@ function(module, exports, log, net, crypto,
   }
 
   /**
-   * Fetche the headers and snippets for all messages. Only retrieves
+   * Fetch the headers and snippets for all messages. Only retrieves
    * messages for which filterFunc(uidl) returns true.
    *
    * @param {object} opts
    * @param {function(uidl)} opts.filter Only store messages matching filter
    * @param {function(evt)} opts.progress Progress callback
    * @param {int} opts.checkpointInterval Call `checkpoint` every N messages
+   * @param {int} opts.maxMessages Download _at most_ this many
+   *   messages during this listMessages invocation. If we find that
+   *   we would have to download more than this many messages, mark
+   *   the rest as "overflow" messages that could be downloaded in a
+   *   future sync iteration. (Default is infinite.)
    * @param {function(next)} opts.checkpoint Callback to periodically save state
-   * @param {function(err, numSynced)} cb
+   * @param {function(err, numSynced, overflowMessages)} cb
+   *   Upon completion, returns the following data:
+   *
+   *   numSynced: The number of messages synced.
+   *
+   *   overflowMessages: An array of objects with the following structure:
+   *
+   *       { uidl: "", size: 0 }
+   *
+   *     Each message in overflowMessages was NOT downloaded. Instead,
+   *     you should store those UIDLs for future retrieval as part of
+   *     a "Download More Messages" operation.
    */
   Pop3Client.prototype.listMessages = function(opts, cb) {
     var filterFunc = opts.filter;
     var progressCb = opts.progress;
     var checkpointInterval = opts.checkpointInterval || null;
+    var maxMessages = opts.maxMessages || Infinity;
     var checkpoint = opts.checkpoint;
+    var overflowMessages = [];
 
     // Get a mapping of number->UIDL.
     this._loadMessageList(function(err, unfilteredMessages) {
@@ -7319,15 +7346,21 @@ function(module, exports, log, net, crypto,
       for (var i = 0; i < unfilteredMessages.length; i++) {
         var msgInfo = unfilteredMessages[i];
         if (!filterFunc || filterFunc(msgInfo.uidl)) {
-          totalBytes += msgInfo.size;
-          messages.push(msgInfo);
+          if (messages.length < maxMessages) {
+            totalBytes += msgInfo.size;
+            messages.push(msgInfo);
+          } else {
+            overflowMessages.push(msgInfo);
+          }
         } else {
           seenCount++;
         }
       }
 
-      console.log('POP3: listMessages found ' + messages.length +
-                  ' new, ' + seenCount + ' seen messages. New UIDLs:');
+      console.log('POP3: listMessages found ' +
+                  messages.length + ' new, ' +
+                  overflowMessages.length + ' overflow, and ' +
+                  seenCount + ' seen messages. New UIDLs:');
 
       messages.forEach(function(m) {
         console.log('POP3: ' + m.size + ' bytes: ' + m.uidl);
@@ -7345,7 +7378,10 @@ function(module, exports, log, net, crypto,
         console.log('POP3: Next batch. Messages left: ' + messages.length);
         // If there are no more messages, we're done.
         if (!messages.length) {
-          cb && cb(null, totalMessages);
+          console.log('POP3: Sync complete. ' +
+                      totalMessages + ' messages synced, ' +
+                      overflowMessages.length + ' overflow messages.');
+          cb && cb(null, totalMessages, overflowMessages);
           return;
         }
 
@@ -7416,7 +7452,11 @@ function(module, exports, log, net, crypto,
   // it creates unnecessary garbage. Clean this up when we switch over
   // to jsmime.
   Pop3Client.prototype.downloadPartialMessageByNumber = function(number, cb) {
-    this.protocol.sendRequest('TOP', [number, LINES_TO_FETCH_FOR_SNIPPET],
+    // Based on SNIPPET_SIZE_GOAL, calculate approximately how many
+    // lines we'll need to fetch in order to roughly retrieve
+    // SNIPPET_SIZE_GOAL bytes.
+    var numLines = Math.floor(syncbase.POP3_SNIPPET_SIZE_GOAL / 80);
+    this.protocol.sendRequest('TOP', [number, numLines],
                               true, function(err, rsp) {
       if(err) {
         cb && cb({
@@ -7618,7 +7658,7 @@ function(module, exports, log, net, crypto,
         !rep.header.hasAttachments &&
         (rootNode.parsedHeaders['x-ms-has-attach'] ||
          rootNode.meta.mimeMultipart === 'mixed' ||
-         estSize > INFER_ATTACHMENTS_SIZE)) {
+         estSize > syncbase.POP3_INFER_ATTACHMENTS_SIZE)) {
       rep.header.hasAttachments = true;
     }
 
@@ -7702,6 +7742,8 @@ function(log, util, module, require, exports,
          mailchew, sync, date, jobmixins,
          allback, pop3) {
 
+var PASTWARDS = 1;
+
 /**
  * Manage the synchronization process for POP3 accounts. In IMAP and
  * ActiveSync, the work of this class is split in two (a `folderConn`
@@ -7732,8 +7774,9 @@ exports.Pop3FolderSyncer = Pop3FolderSyncer;
  *
  * @param {boolean} getNew If a fresh connection should always be made.
  * @param {int} cbIndex Index of the parent function's callback in args
+ * @param {string} whyLabel Description for why we need the connection
  */
-function lazyWithConnection(getNew, cbIndex, fn) {
+function lazyWithConnection(getNew, cbIndex, whyLabel, fn) {
   return function pop3LazyWithConnection() {
     var args = Array.slice(arguments);
     require([], function () {
@@ -7756,7 +7799,7 @@ function lazyWithConnection(getNew, cbIndex, fn) {
             };
             fn.apply(this, [conn].concat(args));
           }
-        }.bind(this));
+        }.bind(this), whyLabel);
       }.bind(this);
 
       // if we require a fresh connection, close out the old one first.
@@ -7772,7 +7815,10 @@ function lazyWithConnection(getNew, cbIndex, fn) {
 
 Pop3FolderSyncer.prototype = {
   syncable: true,
-  canGrowSync: false, // not relevant for POP3
+  get canGrowSync() {
+    // Only the inbox can be grown in POP3.
+    return this.isInbox;
+  },
 
   /**
    * Given a list of messages, download snippets for those that don't
@@ -7782,6 +7828,7 @@ Pop3FolderSyncer.prototype = {
    * body part/message downloading. XXX rename this family of methods.
    */
   downloadBodies: lazyWithConnection(/* getNew = */ false, /* cbIndex = */ 2,
+    /* whyLabel = */ 'downloadBodies',
   function(conn, headers, options, callback) {
     var latch = allback.latch();
     var storage = this.storage;
@@ -7809,6 +7856,7 @@ Pop3FolderSyncer.prototype = {
    * all in one go.
    */
   downloadBodyReps: lazyWithConnection(/* getNew = */ false, /* cbIndex = */ 2,
+    /* whyLabel = */ 'downloadBodyReps',
   function(conn, header, options, callback) {
     if (options instanceof Function) {
       callback = options;
@@ -7942,6 +7990,17 @@ Pop3FolderSyncer.prototype = {
   },
 
   /**
+   * Return the folderMeta for the INBOX, upon which we store the
+   * uidlMap and overflowMap. Cache it for performance, since this
+   * function gets invoked frequently.
+   */
+  get inboxMeta() {
+    // Override this getter to provide direct access in the future.
+    return (this.inboxMeta = this.account.getFolderMetaForFolderId(
+      this.account.getFirstFolderWithType('inbox').id));
+  },
+
+  /**
    * Retrieve the message's id (header.id) given a server's UIDL.
    *
    * CAUTION: Zero is a valid message ID. I made the mistake of doing
@@ -7952,21 +8011,58 @@ Pop3FolderSyncer.prototype = {
     if (uidl == null) {
       return null;
     }
-    var inboxMeta = this.account.getFolderMetaForFolderId(
-      this.account.getFirstFolderWithType('inbox').id);
-    inboxMeta.uidlMap = inboxMeta.uidlMap || {};
-    return inboxMeta.uidlMap[uidl];
+    this.inboxMeta.uidlMap = this.inboxMeta.uidlMap || {};
+    return this.inboxMeta.uidlMap[uidl];
   },
 
   /**
    * Store the given message UIDL so that we know it has already been
-   * downloaded.
+   * downloaded. If the message was previously marked as overflow,
+   * remove it from the overflow map because we know about it now.
    */
   storeMessageUidlForMessageId: function(uidl, headerId) {
-    var inboxMeta = this.account.getFolderMetaForFolderId(
-      this.account.getFirstFolderWithType('inbox').id);
-    inboxMeta.uidlMap = inboxMeta.uidlMap || {};
-    inboxMeta.uidlMap[uidl] = headerId;
+    this.inboxMeta.uidlMap = this.inboxMeta.uidlMap || {};
+    this.inboxMeta.uidlMap[uidl] = headerId;
+    if (this.inboxMeta.overflowMap) {
+      delete this.inboxMeta.overflowMap[uidl];
+    }
+  },
+
+  /**
+   * Mark the given message UIDL as being an "overflow message"; that
+   * is, it was NOT downloaded and should be made available to
+   * download during a "download more messages..." operation.
+   *
+   * This data is stored in INBOX's folderMeta like so:
+   *
+   * overflowMap: {
+   *   "(message uidl)": { size: 0 },
+   *   ...
+   * }
+   */
+  storeOverflowMessageUidl: function(uidl, size) {
+    this.inboxMeta.overflowMap = this.inboxMeta.overflowMap || {};
+    this.inboxMeta.overflowMap[uidl] = { size: size };
+  },
+
+  /**
+   * Return true if there are overflow messages. (If so, we're NOT
+   * synced to the dawn of time.)
+   */
+  hasOverflowMessages: function() {
+    if (!this.inboxMeta.overflowMap) { return false; }
+    for (var key in this.inboxMeta.overflowMap) {
+      return true; // if there's even a single key, we have some!
+    }
+    return false;
+  },
+
+  /**
+   * Return whether or not the given UIDL is in the overflow map.
+   */
+  isUidlInOverflowMap: function(uidl) {
+    if (!this.inboxMeta.overflowMap) { return false; }
+    return !!this.inboxMeta.overflowMap[uidl];
   },
 
   /**
@@ -7977,7 +8073,7 @@ Pop3FolderSyncer.prototype = {
    */
   initialSync: function(slice, initialDays, syncCb, doneCb, progressCb) {
     syncCb('sync', false /* accumulateMode */, true /* ignoreHeaders */);
-    this.sync(true, slice, doneCb, progressCb);
+    this.sync('initial', slice, doneCb, progressCb);
   },
 
   /**
@@ -7987,7 +8083,7 @@ Pop3FolderSyncer.prototype = {
    */
   refreshSync: function(
       slice, dir, startTS, endTS, origStartTS, doneCb, progressCb) {
-    this.sync(false, slice, doneCb, progressCb);
+    this.sync('refresh', slice, doneCb, progressCb);
   },
 
   /**
@@ -8021,11 +8117,20 @@ Pop3FolderSyncer.prototype = {
   },
 
   /**
-   * Irrelevant for POP3.
+   * If we have overflow messages, fetch them here.
    */
   growSync: function(slice, growthDirection, anchorTS, syncStepDays,
                      doneCallback, progressCallback) {
-    return false; // No need to invoke the callbacks.
+    if (growthDirection !== PASTWARDS || !this.hasOverflowMessages()) {
+      return false;
+    }
+
+    // For simplicity, we ignore anchorTS and syncStepDays, because
+    // POP3's limitations make it difficult to infer anything about
+    // the messages we're going to download now. All we can do here is
+    // download another batch of overflow messages.
+    this.sync('grow', slice, doneCallback, progressCallback);
+    return true;
   },
 
   allConsumersDead: function() {
@@ -8054,17 +8159,51 @@ Pop3FolderSyncer.prototype = {
    * messages along with messages we've seen before. To ensure we only
    * retrieve messages we don't know about, we keep track of message
    * unique IDs (UIDLs) and only download new messages.
+   *
+   * OVERFLOW MESSAGE HANDLING:
+   *
+   * We don't want to overwhelm a sync with a ridiculous number of
+   * messages if the spool has a lot of new messagse. Instead of
+   * blindly downloading all headers right away, we store excess
+   * "overflow" messages for future "grow" syncs, e.g. when the user
+   * clicks "Get More Messages" in the message list.
+   *
+   * This works as follows:
+   *
+   * If we're syncing normally, mark any excess messages as overflow
+   * messages and don't download them. This is handled largely by
+   * Pop3Client by the maxMessages option to listMessages(). We ignore
+   * any messages already marked as overflow for the purposes of the
+   * sync filter.
+   *
+   * If this is a grow sync, i.e. we want to download some overflow
+   * messages, we set the download filter to _only_ include overflow
+   * UIDLs. We may still have _more_ overflow messages, but that's
+   * okay, because they'll just be stored in the overflowMap like
+   * normal, for a future "grow" sync. Any messages we do download are
+   * marked as stored and removed from the overflowMap (in
+   * `this.storeMessageUidlForMessageId`).
    */
   sync: lazyWithConnection(/* getNew = */ true, /* cbIndex = */ 2,
-  function(conn, initialSync, slice, doneCallback, progressCallback) {
+  /* whyLabel = */ 'sync',
+  function(conn, syncType, slice, doneCallback, progressCallback) {
     // if we could not establish a connection, abort the sync.
     var self = this;
     this._LOG.sync_begin();
 
     // Only fetch info for messages we don't already know about.
-    var filterFunc = function(uidl) {
-      return self.getMessageIdForUidl(uidl) == null; // might be 0
-    };
+    var filterFunc;
+    if (syncType !== 'grow') {
+      // In a regular sync, download any message that we don't know
+      // about that isn't in the overflow map.
+      filterFunc = function(uidl) {
+        return self.getMessageIdForUidl(uidl) == null && // might be 0
+          !self.isUidlInOverflowMap(uidl);
+      };
+    } else /* (syncType === 'grow') */ {
+      // In a 'grow' sync, ONLY download overflow messages.
+      filterFunc = this.isUidlInOverflowMap.bind(this);
+    }
 
     var bytesStored = 0;
     var numMessagesSynced = 0;
@@ -8082,6 +8221,7 @@ Pop3FolderSyncer.prototype = {
       conn.listMessages({
         filter: filterFunc,
         checkpointInterval: sync.POP3_SAVE_STATE_EVERY_N_MESSAGES,
+        maxMessages: sync.POP3_MAX_MESSAGES_PER_SYNC,
         checkpoint: function(next) {
           // Every N messages, wait for everything to be stored to
           // disk and saved in the database. Then proceed.
@@ -8102,7 +8242,7 @@ Pop3FolderSyncer.prototype = {
             messageCb();
           });
         }.bind(this),
-      }, function fetchDone(err, numSynced) {
+      }, function fetchDone(err, numSynced, overflowMessages) {
         // Upon downloading all of the messages, we MUST issue a QUIT
         // command. This will tear down the connection, however if we
         // don't, we will never receive notifications of new messages.
@@ -8117,6 +8257,15 @@ Pop3FolderSyncer.prototype = {
           doneCallback(err);
           return;
         }
+
+        // If there were excess messages, mark them for later download.
+        if (overflowMessages.length) {
+          overflowMessages.forEach(function(message) {
+            this.storeOverflowMessageUidl(message.uidl, message.size);
+          }, this);
+          this._LOG.overflowMessages(overflowMessages.length);
+        }
+
         // When all of the messages have been persisted to disk, indicate
         // that we've successfully synced. Refresh our view of the world.
         this.storage.runAfterDeferredCalls(fetchDoneCb);
@@ -8125,12 +8274,24 @@ Pop3FolderSyncer.prototype = {
 
     latch.then((function onSyncDone() {
       this._LOG.sync_end();
-      // POP3 always syncs the entire time range available.
+
+      // Because POP3 has no concept of syncing discrete time ranges,
+      // we have to trick the storage into marking everything synced
+      // _except_ the dawn of time. This has to be slightly later than
+      // a value that would be interpreted as the dawn of time -- in
+      // this case, it has to be one day plus one. Ideally, this
+      // should be abstracted a little better; it's mostly IMAP that
+      // needs more involved logic.
       this.storage.markSyncRange(
-        sync.OLDEST_SYNC_DATE, date.NOW(), 'XXX', date.NOW());
-      this.storage.markSyncedToDawnOfTime();
+        sync.OLDEST_SYNC_DATE + date.DAY_MILLIS + 1,
+        date.NOW(), 'XXX', date.NOW());
+
+      if (!this.hasOverflowMessages()) {
+        this.storage.markSyncedToDawnOfTime();
+      }
+
       this.account.__checkpointSyncCompleted();
-      if (initialSync) {
+      if (syncType === 'initial') {
         // If it's the first time we've synced, we've set
         // ignoreHeaders to true, which means that slices don't know
         // about new messages. We'll reset ignoreHeaders to false
@@ -8146,7 +8307,8 @@ Pop3FolderSyncer.prototype = {
         this.storage._curSyncSlice.ignoreHeaders = false;
         this.storage._curSyncSlice.waitingOnData = 'db';
         this.storage.getMessagesInImapDateRange(
-          0, null, sync.INITIAL_FILL_SIZE, sync.INITIAL_FILL_SIZE,
+          sync.OLDEST_SYNC_DATE, null,
+          sync.INITIAL_FILL_SIZE, sync.INITIAL_FILL_SIZE,
           // Don't trigger a refresh; we just synced. Accordingly,
           // releaseMutex can be null.
           this.storage.onFetchDBHeaders.bind(
@@ -8176,6 +8338,7 @@ var LOGFAB = exports.LOGFAB = log.register(module, {
     events: {
       savedAttachment: { storage: true, mimeType: true, size: true },
       saveFailure: { storage: false, mimeType: false, error: false },
+      overflowMessages: { count: true },
     },
     TEST_ONLY_events: {
     },
@@ -8460,7 +8623,7 @@ var properties = {
    * abstracts the `done` callback.)
    * @param {function(err, conn, done)} cb
    */
-  withConnection: function(cb) {
+  withConnection: function(cb, whyLabel) {
     // This implementation serializes withConnection requests so that
     // we don't step on requests' toes. While Pop3Client wouldn't mix
     // up the requests themselves, interleaving different operations
@@ -8478,7 +8641,7 @@ var properties = {
           }
         }.bind(this);
         if (!this._conn || this._conn.state === 'disconnected') {
-          this._makeConnection(next);
+          this._makeConnection(next, whyLabel);
         } else {
           next();
         }
@@ -8627,7 +8790,7 @@ var properties = {
     }
     this.withConnection(function(err) {
       callback(err);
-    });
+    }, 'checkAccount');
   },
 
   /**

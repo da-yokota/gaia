@@ -30,7 +30,17 @@
 
   function getDownloadId(download) {
     return DownloadFormatter.getUUID(download);
-  };
+  }
+
+  function _deleteDownload(id, successCb, errorCb) {
+    var download = downloadsCache[id];
+    _deleteFromDownloadsCache(id);
+    var req = DownloadHelper.remove(download);
+    req.onsuccess = successCb;
+    req.onerror = errorCb;
+
+    return req;
+  }
 
   var DownloadApiManager = {
     getDownloads: function(onsuccess, onerror, oncomplete) {
@@ -68,6 +78,7 @@
             onsuccess(downloads, oncomplete);
           };
           request.onerror = function(e) {
+            console.warn('DATASTORE FAILED');
             // Use only the API
             _appendDownloadsToCache(notCompletedDownloads);
             onsuccess(notCompletedDownloads, oncomplete);
@@ -88,12 +99,40 @@
       navigator.mozDownloadManager.ondownloadstart = handler;
     },
 
-    deleteDownload: function(id, callback) {
-      _deleteFromDownloadsCache(id);
-      // TODO Add API Call
-      if (typeof callback === 'function') {
-        callback();
+    deleteDownloads:
+      function(downloadIds, onDeletedSuccess, onDeletedError, oncomplete) {
+      if (downloadIds == null) {
+        if (typeof onDeletedError === 'function') {
+          onDeletedError(null, 'Download IDs not defined or null');
+        }
+        return;
       }
+      if (downloadIds.length === 0) {
+        if (typeof oncomplete === 'function') {
+          oncomplete();
+        }
+        return;
+      }
+
+      var currentId = downloadIds.pop();
+      var self = this;
+      _deleteDownload(currentId, function onDelete() {
+        onDeletedSuccess && onDeletedSuccess(currentId);
+        self.deleteDownloads(
+          downloadIds,
+          onDeletedSuccess,
+          onDeletedError,
+          oncomplete
+        );
+      }, function onError(msg) {
+        onDeletedError && onDeletedError(currentId, msg);
+        self.deleteDownloads(
+          downloadIds,
+          onDeletedSuccess,
+          onDeletedError,
+          oncomplete
+        );
+      });
     },
 
     getDownload: function(id) {

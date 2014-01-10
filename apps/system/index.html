@@ -16,6 +16,7 @@
     <script defer src="shared/js/async_storage.js"></script>
     <script defer src="shared/js/mobile_operator.js"></script>
     <script defer src="shared/js/manifest_helper.js"></script>
+    <script defer src="shared/js/settings_helper.js"></script>
     <script defer src="shared/js/icc_helper.js"></script>
     <script defer src="shared/js/mime_mapper.js"></script>
     <script defer src="shared/js/settings_url.js"></script>
@@ -23,15 +24,21 @@
     <script defer src="shared/js/lazy_loader.js"></script>
     <script defer src="shared/js/screen_layout.js"></script>
     <script defer src="shared/js/iac_handler.js"></script>
+
+    <script defer src="js/system.js"></script>
+    <script defer src="js/base_ui.js"></script>
+
     <script defer src="js/orientation_manager.js"></script>
     <!--
     <script defer src="shared/js/keyboard_helper.js"></script>
     <script defer src="shared/js/template.js"></script>
     -->
+    <!-- SIMSlot -->
+    <script type="text/javascript" defer src="js/simslot.js"></script>
+    <script type="text/javascript" defer src="js/simslot_manager.js"></script>
 
     <!-- Wrapper -->
     <link rel="stylesheet" type="text/css" href="style/wrapper/wrapper.css">
-    <script type="text/javascript" defer src="js/wrapper.js"></script>
 
     <!-- System -->
     <link rel="stylesheet" type="text/css" href="style/system/system.css">
@@ -141,6 +148,7 @@
     <!-- LockScreen -->
     <link rel="stylesheet" type="text/css" href="style/lockscreen/lockscreen.css">
     <script defer src="/shared/js/lockscreen_slide.js"></script>
+    <script defer src="js/lockscreen_connection_info_manager.js"></script>
     <script defer src="js/lockscreen.js"></script>
 
     <!-- PIN Unlocking -->
@@ -155,9 +163,6 @@
     <link rel="stylesheet" type="text/css" href="style/modal_dialog/prompt.css">
     <link rel="stylesheet" type="text/css" href="style/modal_dialog/modal_dialog.css">
     <script defer src="js/modal_dialog.js"></script>
-
-    <!-- Authentication Dialog-->
-    <script defer src="js/authentication_dialog.js"></script>
 
     <!-- Carrier info notifier, shared by CDMA and Cell Broadcast -->
     <script defer src="js/carrier_info_notifier.js"></script>
@@ -222,7 +227,8 @@
     <script defer src="js/wifi.js"></script>
 
     <!-- Nfc -->
-    <script defer src="js/nfc_handover.js"></script>
+    <script defer src="js/nfc_util.js"></script>
+    <script defer src="js/nfc_handover_manager.js"></script>
     <script defer src="js/nfc_manager.js"></script>
 
     <!-- Voicemail -->
@@ -257,6 +263,7 @@
 
     <!-- Operator Variant Mechanism -->
     <script defer src="shared/js/operator_variant_helper.js"></script>
+    <script defer src="js/operator_variant/operator_variant_iccs.js"></script>
     <script defer src="js/operator_variant/operator_variant.js"></script>
 
     <!-- Crash Reporter -->
@@ -281,19 +288,22 @@
     <link rel="stylesheet" type="text/css" href="style/window.css">
     <script defer src="js/base_ui.js"></script>
     <script defer src="js/app_modal_dialog.js"></script>
-    <script defer src="js/window.js"></script>
-
+    <script defer src="js/app_chrome.js"></script>
+    <script defer src="js/app_transition_controller.js"></script>
+    <script defer src="js/app_authentication_dialog.js"></script>
+    <script defer src="js/app_window.js"></script>
     <script defer src="js/shrinking_ui.js"></script>
     <link rel="stylesheet" type="text/css" href="style/shrinking_ui/shrinking_ui.css">
-
+    <script defer src="js/browser_mixin.js"></script>
     <script defer src="js/wrapper_factory.js"></script>
     <script defer src="js/homescreen_window.js"></script>
     <script defer src="js/homescreen_launcher.js"></script>
     <script defer src="js/activity_window.js"></script>
     <script defer src="js/activity_window_factory.js"></script>
     <script defer src="js/app_window_factory.js"></script>
-    <script defer src="js/window_manager.js"></script>
+    <script defer src="js/app_window_manager.js"></script>
     <script defer src="js/visibility_manager.js"></script>
+    <script defer src="js/layout_manager.js"></script>
 
     <!-- Edge Gestures -->
     <script defer src="js/stack_manager.js"></script>
@@ -311,6 +321,9 @@
     <!-- Call Forwarding  -->
     <script defer src="js/call_forwarding.js"></script>
 
+    <!-- Telephony Settings  -->
+    <script defer src="js/telephony_settings.js"></script>
+
     <!-- Internet Sharing  -->
     <script defer src="js/internet_sharing.js"></script>
 
@@ -321,6 +334,13 @@
     <script defer src="js/storage_watcher.js"></script>
     <link rel="stylesheet" type="text/css" href="style/storage_watcher/storage_watcher.css">
 
+    <!-- Inter App Communication with Dialer -->
+    <script defer src="js/dialercomms.js"></script>
+
+    <!-- Rocketbar -->
+    <script defer src="js/rocketbar.js"></script>
+    <script defer src="js/title.js"></script>
+    <link rel="stylesheet" type="text/css" href="style/rocketbar.css">
     <style>
       /* initlogos style is here to prevent flashing */
 
@@ -389,6 +409,8 @@
       </div>
 
       <div id="statusbar" data-z-index-level="statusbar">
+        <!-- Browser chrome title-->
+        <div id="statusbar-title"></div>
         <!-- Carrier & date label -->
         <div id="statusbar-label" class="sb-start-upper"></div>
         <!-- CDMA emergency callback Notification -->
@@ -396,7 +418,6 @@
         <!-- Notification -->
         <div id="statusbar-notification" class="sb-start sb-icon sb-icon-notification"
           data-num="" hidden></div>
-        <div id="statusbar-keyboard" class="sb-start sb-icon sb-icon-keyboard" hidden></div>
 
         <!-- Time -->
         <div id="statusbar-time"></div>
@@ -434,6 +455,16 @@
         <img id="statusbar-network-activity"
              src="style/statusbar/images/network-activity.png"
              class="sb-icon-network-activity" hidden>
+      </div>
+      <div id="search-bar" data-z-index-level="search-bar">
+        <form id="search-form" class="skin-dark">
+          <p>
+            <input id="search-input" type="search" x-inputmode="verbatim" placeholder="Search or type address" data-l10n-id="search-or-type-address"></input>
+            <button id="search-reset" type="reset"></button>
+            <a href="#" id="search-cancel" data-l10n-id="cancel">Cancel</a>
+          </p>
+        </form>
+        <div id="search-container"></div>
       </div>
 
       <div id="utility-tray" data-z-index-level="utility-tray">
@@ -543,17 +574,6 @@
 
       <div id="windows" data-z-index-level="app">
         <!-- application windows are added here -->
-        <header id="wrapper-activity-indicator"></header>
-        <footer id="wrapper-footer" class="closed">
-          <div id="handler"></div>
-          <menu type="buttonbar">
-            <button type="button" id="back-button" alt="Back" data-disabled="disabled"></button>
-            <button type="button" id="forward-button" alt="Forward" data-disabled="disabled"></button>
-            <button type="button" id="reload-button" alt="Reload"></button>
-            <button type="button" id="bookmark-button" alt="Bookmark" data-disabled="disabled"></button>
-            <button type="button" id="close-button" alt="Close"></button>
-          </menu>
-        </footer>
       </div>
 
       <div id="dialog-overlay" data-z-index-level="dialog-overlay">
@@ -561,15 +581,11 @@
         <div id="simpin-dialog" role="dialog" class="generic-dialog" data-z-index-level="simpin-dialog" hidden>
           <section role="region">
             <header>
-              <button type="reset">
-                <span data-l10n-id="close" class="icon icon-close">Close</span>
+              <button class="back" hidden>
+                <span class="icon icon-back"></span>
               </button>
-              <menu type="toolbar">
-                <button data-l10n-id="ok" type="submit">Done</button>
-              </menu>
               <h1></h1>
             </header>
-
             <div class="container">
               <div id="errorMsg" class="error" hidden>
                 <div id="messageHeader">The PIN was incorrect.</div>
@@ -620,6 +636,10 @@
               </div>
             </div>
           </section>
+          <menu data-items="2">
+            <button type="reset" data-l10n-id="skip">Skip</button>
+            <button data-l10n-id="ok" type="submit">Done</button>
+          </menu>
         </div>
 
         <!-- Crash reporter -->
@@ -693,29 +713,6 @@
               </header>
             </section>
             <div id="trustedui-frame-container"></div>
-          </div>
-        </div>
-
-        <div id="authentication-dialog">
-          <!--div id="authentication-dialog-ftp" role="dialog" class="generic-dialog">
-          </div-->
-          <div id="authentication-dialog-http-authentication" role="dialog" class="generic-dialog">
-            <div class="authentication-dialog-message-container inner">
-              <h3 id="authentication-dialog-title"></h3>
-              <p>
-                <span id="authentication-dialog-http-authentication-message"></span>
-              </p>
-              <p>
-                <span data-l10n-id="username">Username</span>
-                <input id="authentication-dialog-http-username-input" />
-                <span data-l10n-id="password">Password</span>
-                <input id="authentication-dialog-http-password-input" type="password" />
-              </p>
-            </div>
-            <menu data-items="2">
-              <button id="authentication-dialog-http-authentication-cancel" data-l10n-id="cancel">Cancel</button>
-              <button id="authentication-dialog-http-authentication-ok" data-l10n-id="login" class="affirmative">Login</button>
-            </menu>
           </div>
         </div>
 
@@ -855,12 +852,24 @@
                 <span></span>
               </label>
             </div>
+            <ul id="permission-devices">
+            </ul>
             <menu data-items="2">
               <button id="permission-no"></button>
               <button id="permission-yes" class="affirmative"></button>
             </menu>
           </div>
         </div>
+      </div>
+
+      <div id="device-list-item-tmpl" class="hide">
+      <!--
+        <label class="device-list deviceEnable">
+          <input class="input-enable" id="${id}" type="checkbox" ${checked}>
+          <span></span>
+        </label>
+        <span class="device-item">${label}</span>
+      -->
       </div>
 
       <form id="app-install-dialog" class='app-install-dialog generic-dialog'
@@ -1018,7 +1027,7 @@
         <div id="lockscreen-container">
           <div id="lockscreen-panel-main" class="lockscreen-panel">
             <div id="lockscreen-header">
-              <div id="lockscreen-connstate" hidden><span></span><span></span></div>
+              <div id="lockscreen-conn-states" hidden></div>
               <div id="lockscreen-mute" hidden></div>
               <div id="lockscreen-alt-camera" class="lockscreen-icon">
                 <div role="button" data-l10n-id="camera-a11y-button" aria-label="Camera"></div>

@@ -89,7 +89,9 @@ Evme.Utils = new function Evme_Utils() {
   };
 
   this.logger = function logger(level) {
-    return function Evme_logger() {
+    return window.EverythingME.debug ? Evme_logger : this.NOOP;
+
+    function Evme_logger() {
       var t = new Date(),
           h = t.getHours(),
           m = t.getMinutes(),
@@ -665,6 +667,30 @@ Evme.Utils = new function Evme_Utils() {
 
   this.getUrlParam = function getUrlParam(key) {
     return parsedQuery[key];
+  };
+
+  /*
+    Serializes a json object into a querystring
+   */
+  this.serialize = function serialize(params) {
+      var paramArray = [];
+
+      for (var k in params) {
+          var value = params[k],
+              finalValue = '';
+
+          if (typeof value !== 'undefined') {
+              // if not object
+              if (!(value instanceof Object)) {
+                  finalValue = value;
+              // if object and isn't empty
+              } else if (Object.keys(value).length) {
+                  finalValue = JSON.stringify(value);
+              }
+              paramArray.push(k + '=' + encodeURIComponent(finalValue));
+          }
+      }
+      return paramArray.join('&');
   };
 
   this.cssPrefix = function _cssPrefix() {

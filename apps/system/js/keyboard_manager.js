@@ -104,7 +104,7 @@ var KeyboardManager = {
     }, {});
 
     // 3rd-party keyboard apps must be run out-of-process.
-    SettingsListener.observe('keyboard.3rd-party-app.enabled', false,
+    SettingsListener.observe('keyboard.3rd-party-app.enabled', true,
       function(value) {
         this.isOutOfProcessEnabled = value;
       }.bind(this));
@@ -131,8 +131,8 @@ var KeyboardManager = {
     // since it would take a longer round-trip to receive focuschange
     // Also in Bug 856692 we realise that we need to close the keyboard
     // when an inline activity goes away.
-    window.addEventListener('appwillclose', this);
-    window.addEventListener('activitywillclose', this);
+    window.addEventListener('activityopening', this);
+    window.addEventListener('activityclosing', this);
     window.addEventListener('attentionscreenshow', this);
     window.addEventListener('mozbrowsererror', this);
     window.addEventListener('applicationsetupdialogshow', this);
@@ -235,11 +235,21 @@ var KeyboardManager = {
       }
     }, this);
 
-    // if there are no keyboards running - set text to show,
-    // but don't bring it to the foreground.
-    if (!Object.keys(this.runningLayouts).length) {
-      this.setKeyboardToShow('text', undefined, true);
-    }
+    var SETTING_START_ON_BOOT_KEY = 'keyboard.start-on-boot';
+    var req = navigator.mozSettings.createLock().get(SETTING_START_ON_BOOT_KEY);
+    req.onsuccess = req.onerror = (function() {
+      // If the value is not set or it is set to true,
+      // launch the keyboad in background
+      var launchOnBoot = req.results && req.results[SETTING_START_ON_BOOT_KEY];
+      if (typeof launchOnBoot !== 'boolean')
+          launchOnBoot = true;
+
+      // if there are no keyboards running at this point - set text to show,
+      // but don't bring it to the foreground.
+      if (launchOnBoot && !Object.keys(this.runningLayouts).length) {
+        this.setKeyboardToShow('text', undefined, true);
+      }
+    }).bind(this);
   },
 
   inputFocusChange: function km_inputFocusChange(evt) {
@@ -385,9 +395,13 @@ var KeyboardManager = {
       var detail = {
         'detail': {
           'height': self.keyboardHeight
-        }
+        },
+        bubbles: true,
+        cancellable: true
       };
-      window.dispatchEvent(new CustomEvent('keyboardchange', detail));
+      // We dispatch the events at the body level so we are able to intercept
+      // them and prevent page resizing where desired.
+      document.body.dispatchEvent(new CustomEvent('keyboardchange', detail));
     };
 
     // If the keyboard is hidden, or when transitioning is not finished
@@ -416,23 +430,25 @@ var KeyboardManager = {
         }, 0);
         break;
       case 'applicationsetupdialogshow':
-      case 'activitywillclose':
-      case 'appwillclose':
+      case 'activityopening':
+      case 'activityclosing':
         this.hideKeyboardImmediately();
         break;
       case 'mozbrowsererror': // OOM
-        this.removeKeyboard(evt.target.dataset.frameManifestURL);
+        this.removeKeyboard(evt.target.dataset.frameManifestURL, true);
         break;
     }
   },
 
-  removeKeyboard: function km_removeKeyboard(manifestURL) {
+  removeKeyboard: function km_removeKeyboard(manifestURL, handleOOM) {
+    var revokeShowedType = null;
     if (!this.runningLayouts.hasOwnProperty(manifestURL)) {
       return;
     }
 
     if (this.showingLayout.frame &&
       this.showingLayout.frame.dataset.frameManifestURL === manifestURL) {
+      revokeShowedType = this.showingLayout.type;
       this.hideKeyboard();
     }
 
@@ -447,6 +463,10 @@ var KeyboardManager = {
     }
 
     delete this.runningLayouts[manifestURL];
+
+    if (handleOOM && revokeShowedType !== null) {
+      this.setKeyboardToShow(revokeShowedType);
+    }
   },
 
   setKeyboardToShow: function km_setKeyboardToShow(group, index, launchOnly) {
@@ -464,10 +484,10 @@ var KeyboardManager = {
     this.showingLayout.frame = this.launchLayoutFrame(layout);
 
     // By setting launchOnly to true, we load the keyboard frame w/o bringing it
-    // to the foreground; this is effectively equal to calling
-    // setKeyboardToShow() *then* call resetShowingKeyboard().
+    // to the backgorund; this is convenient to call
+    // setKeyboardToShow() and call resetShowingKeyboard() in one atcion.
     if (launchOnly) {
-      this.showingLayout.frame.hidden = true;
+      this.resetShowingKeyboard();
       return;
     }
     // remove transitionOut for showing keyboard while user foucus quickly again
@@ -528,8 +548,6 @@ var KeyboardManager = {
   /**
    * A half-permanent notification should display after the keyboard got
    * activated, and only hides after the keyboard got deactivated.
-   *
-   * @this
    */
   showIMESwitcher: function km_showIMESwitcher() {
     var showed = this.showingLayout;
@@ -585,6 +603,9 @@ var KeyboardManager = {
 
       self._debug('hideKeyboard display transitionend');
 
+      // TODO: Transfer to keyboardclosed
+      window.dispatchEvent(new CustomEvent('keyboardhidden'));
+
       // prevent destroying the keyboard when we're not hidden anymore
       if (!self.keyboardFrameContainer.classList.contains('hide') ||
               self.keyboardFrameContainer.dataset.transitionOut !== 'true') {
@@ -598,6 +619,7 @@ var KeyboardManager = {
       onTransitionEnd);
 
     this.keyboardHeight = 0;
+    // TODO: Transfer to keyboardclosing
     window.dispatchEvent(new CustomEvent('keyboardhide'));
     this.keyboardFrameContainer.classList.add('hide');
     this.keyboardFrameContainer.dataset.transitionOut = 'true';
@@ -605,7 +627,11 @@ var KeyboardManager = {
 
   hideKeyboardImmediately: function km_hideImmediately() {
     this.keyboardHeight = 0;
+    // TODO: Transfer to keyboardclosing
     window.dispatchEvent(new CustomEvent('keyboardhide'));
+
+    // TODO: Transfer to keyboardclosed
+    window.dispatchEvent(new CustomEvent('keyboardhidden'));
 
     var keyboard = this.keyboardFrameContainer;
     keyboard.classList.add('notransition');
