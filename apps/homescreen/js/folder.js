@@ -215,3 +215,138 @@ var FolderManager = (function() {
     makeFolder: _makeFolder
   };
 })();
+
+var FolderViewer = (function() {
+  var folderElem, headerElem, titleElem, closeElem, contentElem, appsElem;
+  window.addEventListener('folderlaunch', onFolderLaunch);
+
+  function prepareElements() {
+    folderElem = document.getElementById('folder');
+    headerElem = folderElem.getElementsByClassName('header')[0];
+    titleElem = folderElem.getElementsByClassName('title')[0];
+    closeElem = folderElem.getElementsByClassName('close')[0];
+    contentElem = folderElem.getElementsByClassName('content')[0];
+    appsElem = contentElem.querySelector('.apps-wrapper .static');
+  }
+
+  function setTitle(title) {
+    titleElem.innerHTML = '<span>' + title + '</span>';
+  }
+
+  function setApps(apps) {
+    var length = apps.length, i, app, temp = [], li, image, url;
+    var wrapper, label, removeButton;
+    var loadFinish = function() {
+      for (var i = 0; i < length; i++) {
+        window.URL.revokeObjectURL(temp[i].url);
+        temp[i].li.dataset.loaded = 'true';
+      }
+    };
+
+    for (i = 0; i < length; i++) {
+      app = apps[i];
+      li = document.createElement('li');
+      url = window.URL.createObjectURL(app.renderedIcon);
+      image = new Image();
+      temp[i] = {li: li, url: url};
+
+      li.id = app.manifestURL;
+      li.dataset.name = app.name;
+      li.dataset.manifestURL = app.manifestURL;
+      if (app.entry_point) {
+        li.dataset.entry_point = app.entry_point;
+      }
+
+      image.className = 'icon';
+      image.style.width = '64px'; // TODO: size configuration is needed.
+      image.style.height = '64px';// TODO: size configuration is needed.
+      image.dataset.isIcon = true;
+      image.dataset.manifestURL = app.manifestURL;
+      if (app.entry_point) {
+        image.dataset.entry_point = app.entry_point;
+      }
+      image.src = url;
+      if (i === length - 1) {
+        image.onload = image.onerror = loadFinish;
+      }
+
+      removeButton = document.createElement('span');
+      removeButton.className = 'remove';
+      label = document.createElement('span');
+      label.textContent = app.name;
+      wrapper = document.createElement('span');
+      wrapper.className = 'labelWrapper';
+      wrapper.appendChild(label);
+
+      li.appendChild(image);
+      li.appendChild(removeButton);
+      li.appendChild(wrapper);
+      appsElem.appendChild(li);
+    }
+  }
+
+  function clearApps() {
+    for (var i = appsElem.childNodes.length - 1; i >= 0; i--) {
+      appsElem.removeChild(appsElem.childNodes[i]);
+    }
+  }
+
+  function onFolderLaunch(evt) {
+    LazyLoader.load(
+      ['style/folder.css', document.getElementById('folder-page')],
+      function() { doFolderLaunch(evt); });
+  }
+
+  function doFolderLaunch(evt) {
+    var icon = GridManager.getIconForBookmark(evt.detail.id);
+    var descriptor = icon.descriptor;
+    prepareElements();
+    setTitle(descriptor.name);
+    clearApps();
+    setApps(descriptor.holdApps);
+
+    closeElem.addEventListener('click', hideUI);
+    window.addEventListener('hashchange', onTouchHomeButton);
+    showUI();
+  }
+
+  function showUI() {
+    folderElem.style.display = 'block';
+    window.setTimeout(function() {
+      headerElem.addEventListener('transitionend', function end(evt) {
+        evt.target.removeEventListener('transitionend', end);
+        document.dispatchEvent(new CustomEvent('folderopened'));
+      });
+      //Avoid to open contextmenu for wallpaer.
+      folderElem.addEventListener('contextmenu', noop);
+      folderElem.classList.add('visible');
+    }, 0);
+  }
+
+  function hideUI() {
+    Homescreen.setMode('normal');
+    headerElem.addEventListener('transitionend', function end(evt) {
+      evt.target.removeEventListener('transitionend', end);
+      folderElem.style.display = 'none';
+    });
+    folderElem.classList.remove('visible');
+    folderElem.removeEventListener('contextmenu', noop);
+    closeElem.removeEventListener('click', hideUI);
+    window.removeEventListener('hashchange', onTouchHomeButton);
+    //TODO: Implementation that handle touch event is needed.
+    //FolderManager.removeListener();
+  }
+
+  function onTouchHomeButton() {
+    if (Homescreen.isInEditMode()) {
+      Homescreen.setMode('normal');
+    } else {
+      hideUI();
+    }
+  }
+
+  function noop(evt) {
+    evt.stopPropagation();
+  }
+})();
+

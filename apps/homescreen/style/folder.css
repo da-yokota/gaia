@@ -1,0 +1,331 @@
+.folderScope ul {
+  list-style-type: none;
+}
+
+.folderScope .folder-apps {
+  position: absolute;
+  top: 8.1rem; /* result's header height, overriden in collection.css */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  font-size: 0;
+}
+
+.labelWrapper{
+  color: #FFF;
+  white-space: nowrap;
+  display: block;
+  width: 94%;
+  position: relative;
+  height: 2.5rem;
+  margin: 0.1rem auto -0.4rem;
+  font-weight: 500;
+}
+
+/* text label */
+.content ul > li > span > span {
+  font-size: 1.3rem;
+  line-height: 2rem;
+  text-shadow: 0 0.1rem 0.2rem rgba(0,0,0,1);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folderScope .folder-apps > div {
+  -moz-box-orient: vertical;
+  -moz-box-sizing: border-box;
+  display: -moz-box;
+  width: 100%;
+  min-height: 100%;
+  padding-top: 2.4rem;
+}
+
+.folderScope .folder-wrapper {
+  padding: 0 1rem;
+}
+
+.folderScope h2, .folderScope ul,
+.folderScope li, .folderScope img,
+.folderScope span {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.folderScope #folder {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  overflow: hidden;
+  z-index: 10001;
+  color: #fff;
+}
+
+.folderScope .folder-apps ul li {
+  position: relative; /* for span.remove positioning */
+  display: inline-block;
+  width: 25%;
+  height: 11.5rem;
+  text-align: center;
+  cursor: pointer;
+  vertical-align: top;
+  transition: transform 200ms linear;
+}
+
+/* Shake icons in edit mode */
+.folderScope #folder.animate .title,
+.folderScope #folder.animate .close,
+.folderScope #folder.animate .folder-apps
+{
+  transition: opacity .4s ease;
+}
+
+.folderScope #folder > .content,
+.folderScope #folder .header {
+  transition: transform 380ms ease;
+}
+
+.folderScope #folder .content {
+  position: absolute;
+  top: 5.4rem;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  border-top: 0.1rem solid #fff;
+  /* +0.8rem to accomodate for the arrow that goes out of the content */
+  transform: translateY(calc(100% + 0.8rem));
+  background: rgba(0, 0, 0, 1.0);
+}
+
+.folderScope #folder.visible .content {
+  transform: translateY(0%);
+}
+
+.folderScope #folder .content:before {
+  content: "";
+  position: absolute;
+  left: 4rem;
+  top: -0.7rem;
+  width: 0;
+  height: 0;
+  border-left: 0.8rem solid transparent;
+  border-right: 0.8rem solid transparent;
+  border-bottom: 0.8rem solid #fff;
+}
+
+.folderScope #folder .header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5.4rem;
+  line-height: 5.4rem;
+  z-index: 50;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: normal;
+  overflow: hidden;
+  background: rgba(0, 0, 0, .8);
+  transform: translateY(-100%);
+}
+
+.folderScope #folder.visible .header {
+  transform: translateY(0%);
+}
+
+.folderScope #folder .header .header-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5.4rem;
+}
+
+.folderScope #folder .title {
+  position: relative;
+  z-index: 50;
+  height: 100%;
+  padding: 0 0 0 3.2rem;
+  margin-right: 1rem;
+  font-weight: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  mask: url('/style/app_name_mask.svg#fade_right_mask');
+  text-overflow: '';
+  -moz-box-sizing: border-box;
+}
+
+.folderScope #folder .title input {
+  position: relative;
+  left: -0.1rem;
+  font: inherit;
+  color: inherit;
+  height: 100%;
+  width: calc(100% - 5rem);
+  background: transparent;
+}
+
+.folderScope #folder .image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background-image: url('/style/images/crushed_black_paper.png');
+  background-position: 50% 0;
+  background-size: cover;
+}
+
+.folderScope #folder .image .image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, .55);
+}
+
+.folderScope #folder .header .close {
+  background: rgba(0, 0, 0, .1) url('/everything.me/images/imageclose.png') no-repeat 50% 50%/1.7rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2.5rem;
+  height: 5.4rem;
+  cursor: pointer;
+  z-index: 100;
+}
+
+.folderScope #folder .header .close:after {
+  content: "";
+  position: absolute;
+  top: 0rem;
+  bottom: 0rem;
+  right: -0.1rem;
+  width: 0.1rem;
+  background: rgba(0, 0, 0, .2);
+  border-right: 0.1rem solid rgba(255, 255, 255, .3);
+}
+
+.folderScope #folder.renaming .header .close {
+  pointer-events: none;
+}
+
+.folderScope #folder .header .done {
+  background: transparent url('/everything.me/images/done_icon.png') no-repeat 50% 50%/3rem;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5rem;
+  height: 5.4rem;
+  cursor: pointer;
+  z-index: 100;
+}
+
+.folderScope #folder .header .done:after {
+  content: "";
+  position: absolute;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  left: -0.1rem;
+  width: 0.1rem;
+  background: rgba(0, 0, 0, .3);
+  border-left: 0.1rem solid rgba(255, 255, 255, .3);
+}
+
+.folderScope #folder .folder-apps {
+  top: 0;
+}
+
+.folderScope #folder .folder-apps li {
+  width: 25%;
+}
+
+.folderScope #folder .folder-apps li.installed-separator {
+  width: 100%;
+}
+
+.folderScope #folder .folder-apps ul.static li .icon {
+  transform: scale(1);
+}
+
+body[data-mode='edit'] .folderScope ul > li > img {
+  -moz-animation-name: shake;
+  -moz-animation-duration: .8s;
+  -moz-transform-origin: 50% 50%;
+  -moz-animation-iteration-count: infinite;
+  -moz-animation-timing-function: ease-out;
+}
+
+.folderScope #folder #bgimage-overlay {
+  top: 0;
+  bottom: 0;
+  z-index: 120;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.folderScope #folder.full-image {
+
+}
+
+.folderScope #folder.full-image .folder-apps,
+.folderScope #folder.full-image .header .close,
+.folderScope #folder.full-image .image-overlay {
+  pointer-events: none;
+}
+
+.folderScope #folder.full-image #bgimage-overlay {
+  opacity: 1;
+  pointer-events: inherit;
+}
+
+.folderScope.loading-app #folder .header .title,
+.folderScope.loading-app #folder .header .close,
+.folderScope.loading-app #folder .folder-apps li,
+.folderScope.loading-app.empty-query:not(.keyboard-visible) #shortcuts
+{
+  opacity: 0;
+  pointer-events: none;
+}
+
+.folderScope.loading-app #folder .folder-apps {
+  pointer-events: none;
+}
+
+.folderScope.loading-app #folder .folder-apps li#loading-app {
+  opacity: 1;
+}
+
+.folderScope #folder form {
+  display: none;
+}
+
+.folderScope #folder form.show {
+  display: block;
+}
+
+/* Show Remove Icon to delete from your folder */
+.folderScope li > span.remove {
+  position: absolute;
+  top: -0.4rem;
+  left: 0.5rem;
+  width: calc(100% - 0.5rem);
+  height: 2.6rem;
+  z-index: 15;
+  background: url('../resources/images/delete.png') no-repeat scroll left top / 2.4rem auto transparent;
+}
+
+/* Remove Icon isnt shown when mode is Normal */
+body[data-mode = 'normal'] .folderScope li > span.remove {
+  display: none;
+}
+
