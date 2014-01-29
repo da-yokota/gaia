@@ -218,6 +218,7 @@ var FolderManager = (function() {
 
 var FolderViewer = (function() {
   var folderElem, headerElem, titleElem, closeElem, contentElem, appsElem;
+  var folderIcon;
   window.addEventListener('folderlaunch', onFolderLaunch);
 
   function prepareElements() {
@@ -298,8 +299,8 @@ var FolderViewer = (function() {
   }
 
   function doFolderLaunch(evt) {
-    var icon = GridManager.getIconForBookmark(evt.detail.id);
-    var descriptor = icon.descriptor;
+    folderIcon = GridManager.getIconForBookmark(evt.detail.id);
+    var descriptor = folderIcon.descriptor;
     prepareElements();
     setTitle(descriptor.name);
     clearApps();
