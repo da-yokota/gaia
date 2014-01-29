@@ -219,6 +219,10 @@ var FolderManager = (function() {
 var FolderViewer = (function() {
   var folderElem, headerElem, titleElem, closeElem, contentElem, appsElem;
   var folderIcon;
+  var isTouch = 'ontouchstart' in window;
+  var touchstart = isTouch ? 'touchstart' : 'mousedown';
+  var touchmove = isTouch ? 'touchmove' : 'mousemove';
+  var touchend = isTouch ? 'touchend' : 'mouseup';
   window.addEventListener('folderlaunch', handleEvent);
 
   function prepareElements() {
@@ -228,12 +232,120 @@ var FolderViewer = (function() {
     closeElem = folderElem.getElementsByClassName('close')[0];
     contentElem = folderElem.getElementsByClassName('content')[0];
     appsElem = contentElem.querySelector('.apps-wrapper .static');
+    contentElem.addEventListener(touchstart, handleEvent);
+  }
+
+  //
+  // This func deletes icon which user selected to remove from folder view.
+  // This does
+  // - delete icon from folder object.
+  // - delete icon from folder view.
+  // - update flag(holding or not) of icon.
+  // - move icon to homescreen.
+  //
+  function moveAppToHome(moveElem) {
+    var page, i;
+    var pageHelper = GridManager.pageHelper;
+    var icons = folderIcon.descriptor.holdApps;
+    var moveIcon = GridManager.getIcon(moveElem.dataset);
+
+    // Get icon by refering to parentNode of removeIcon Element.
+    // parentNode.dataset has "manifestURL" and "name" property.
+    // icon.innerHTML should be :
+    // <img src="blob:205dfb4a-XXXXX
+    // data-manifest-u-r-l="app://template.gaiamobile.org/manifest.webapp"
+    // data-is-icon="true" style="width: 64px; height: 64px;" class="icon">
+    // <span class="remove"> </span>
+    // <span class="labelWrapper"><span>Template</span></span>"
+    if (moveIcon.app && moveIcon.descriptor) {
+
+      //delete icon from folder object
+      for (i = 0; i < icons.length; i++) {
+        //Match descriptor of icon and moveIcon.
+        if (icons[i].manifestURL === moveIcon.descriptor.manifestURL) {
+          icons[i].inFolder = false;
+          icons.splice(i, 1);
+
+          //Remove folder icon if no app contains.
+          if (icons.length === 0) {
+            removeFolder(folderIcon.descriptor.manifestURL);
+          }
+          break;
+        }
+      }
+      // move app to homescreen
+      var pagesNum = pageHelper.getTotalPagesNumber();
+      for (i = 1; i <= pagesNum; i++) {
+        page = pageHelper.getPage(parseInt(i, 10));
+        if (!page) {
+          console.log(' ---> page is null or undefined');
+        } else if (page.hasEmptySlot()) {
+          page.appendIcon(moveIcon);
+          break;
+        }
+        // no empty page so that new page will be added with icon.
+        if (i === pagesNum) {
+          pageHelper.addPage([moveIcon]);
+        }
+      }
+
+      // delete icon from folder view.
+      moveElem.parentNode.removeChild(moveElem);
+
+      // save state of homescreen
+      GridManager.markDirtyState();
+    }
+    return;
+  }
+
+  function removeFolder(url) {
+    var elem = document.getElementsByClassName('icon'), i, li;
+    for (i = 1; i < elem.length; i++) {
+      if ((elem[i].dataset.isFolder === 'true') &&
+          (elem[i].manifestURL === url)) {
+        li = elem[i];
+        li.parentNode.removeChild(li);
+        break;
+      }
+    }
+    return;
   }
 
   function handleEvent(evt) {
     var target = evt.target;
     switch (evt.type) {
-    case 'hashchange':
+    case touchstart:
+      contentElem.addEventListener(touchmove, handleEvent, true);
+      contentElem.addEventListener(touchend, handleEvent);
+      contentElem.addEventListener('contextmenu', handleEvent);
+      break;
+
+    case touchmove:
+      break;
+
+    case touchend:
+      if (Homescreen.isInEditMode()) {
+        if (target.classList.contains('remove')) {
+          moveAppToHome(target.parentNode);
+          Homescreen.setMode('normal');
+        }
+      } else {
+        var icon = GridManager.getIcon(evt.target.dataset);
+        if (icon) {
+          icon.app.launch();
+        }
+      }
+      break;
+
+    case 'contextmenu': // long press
+      if ('isIcon' in target.dataset) {
+        Homescreen.setMode('edit');
+      } else {
+        Homescreen.setMode('normal');
+      }
+      break;
+
+    case 'hashchange': // push homebutton
       if (Homescreen.isInEditMode()) {
         Homescreen.setMode('normal');
       } else {
@@ -247,7 +359,6 @@ var FolderViewer = (function() {
         function() { doFolderLaunch(evt); });
     }
   }
-
 
   function setTitle(title) {
     titleElem.innerHTML = '<span>' + title + '</span>';
@@ -347,8 +458,6 @@ var FolderViewer = (function() {
     folderElem.removeEventListener('contextmenu', noop);
     closeElem.removeEventListener('click', hideUI);
     window.removeEventListener('hashchange', handleEvent);
-    //TODO: Implementation that handle touch event is needed.
-    //FolderManager.removeListener();
   }
 
   function noop(evt) {
