@@ -268,7 +268,7 @@ var FolderViewer = (function() {
 
           //Remove folder icon if no app contains.
           if (icons.length === 0) {
-            removeFolder(folderIcon.descriptor.manifestURL);
+            removeFolderFromHome(folderIcon.descriptor.bookmarkURL);
           }
           break;
         }
@@ -298,16 +298,9 @@ var FolderViewer = (function() {
     return;
   }
 
-  function removeFolder(url) {
-    var elem = document.getElementsByClassName('icon'), i, li;
-    for (i = 1; i < elem.length; i++) {
-      if ((elem[i].dataset.isFolder === 'true') &&
-          (elem[i].manifestURL === url)) {
-        li = elem[i];
-        li.parentNode.removeChild(li);
-        break;
-      }
-    }
+  function removeFolderFromHome(url) {
+    var folderElem = getFolderElemByURL(url);
+    folderElem.parentNode.removeChild(folderElem);
     return;
   }
 
