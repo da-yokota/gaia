@@ -219,7 +219,7 @@ var FolderManager = (function() {
 var FolderViewer = (function() {
   var folderElem, headerElem, titleElem, closeElem, contentElem, appsElem;
   var folderIcon;
-  window.addEventListener('folderlaunch', onFolderLaunch);
+  window.addEventListener('folderlaunch', handleEvent);
 
   function prepareElements() {
     folderElem = document.getElementById('folder');
@@ -229,6 +229,25 @@ var FolderViewer = (function() {
     contentElem = folderElem.getElementsByClassName('content')[0];
     appsElem = contentElem.querySelector('.apps-wrapper .static');
   }
+
+  function handleEvent(evt) {
+    var target = evt.target;
+    switch (evt.type) {
+    case 'hashchange':
+      if (Homescreen.isInEditMode()) {
+        Homescreen.setMode('normal');
+      } else {
+        hideUI();
+      }
+      break;
+
+    case 'folderlaunch':
+      LazyLoader.load(
+        ['style/folder.css', document.getElementById('folder-page')],
+        function() { doFolderLaunch(evt); });
+    }
+  }
+
 
   function setTitle(title) {
     titleElem.innerHTML = '<span>' + title + '</span>';
@@ -292,12 +311,6 @@ var FolderViewer = (function() {
     }
   }
 
-  function onFolderLaunch(evt) {
-    LazyLoader.load(
-      ['style/folder.css', document.getElementById('folder-page')],
-      function() { doFolderLaunch(evt); });
-  }
-
   function doFolderLaunch(evt) {
     folderIcon = GridManager.getIconForBookmark(evt.detail.id);
     var descriptor = folderIcon.descriptor;
@@ -307,7 +320,7 @@ var FolderViewer = (function() {
     setApps(descriptor.holdApps);
 
     closeElem.addEventListener('click', hideUI);
-    window.addEventListener('hashchange', onTouchHomeButton);
+    window.addEventListener('hashchange', handleEvent);
     showUI();
   }
 
@@ -333,17 +346,9 @@ var FolderViewer = (function() {
     folderElem.classList.remove('visible');
     folderElem.removeEventListener('contextmenu', noop);
     closeElem.removeEventListener('click', hideUI);
-    window.removeEventListener('hashchange', onTouchHomeButton);
+    window.removeEventListener('hashchange', handleEvent);
     //TODO: Implementation that handle touch event is needed.
     //FolderManager.removeListener();
-  }
-
-  function onTouchHomeButton() {
-    if (Homescreen.isInEditMode()) {
-      Homescreen.setMode('normal');
-    } else {
-      hideUI();
-    }
   }
 
   function noop(evt) {
