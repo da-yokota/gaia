@@ -431,9 +431,80 @@ var FolderViewer = (function() {
     setApps(descriptor.holdApps);
 
     closeElem.addEventListener('click', hideUI);
+    titleElem.addEventListener('click', Rename.start);
     window.addEventListener('hashchange', handleEvent);
     showUI();
   }
+
+  var Rename = {
+    isRenaming: false, oldName: '',
+
+    start: function() {
+      if (Rename.isRenaming) {
+        return;
+      }
+      var title = titleElem.querySelector('span').textContent,
+      elInput, elDone;
+
+      folderElem.classList.add('editting_name');
+      titleElem.innerHTML = '<input type = "text" ' +
+        'autocorrect="off" ' +
+        'x-inputmode="verbatim" />' +
+        '<b class="done"></b>';
+
+      elInput = titleElem.querySelector('input');
+      elDone = titleElem.querySelector('.done');
+
+      elInput.focus();
+      Rename.oldName = elInput.value = title;
+
+      elInput.addEventListener('blur', Rename.cancel);
+      elInput.addEventListener('keyup', Rename.onKeyUp);
+      elDone.addEventListener(touchstart, Rename.save);
+      titleElem.removeEventListener('click', Rename.start);
+      Rename.isRenaming = true;
+    },
+
+    onKeyUp: function(e) {
+      if (e.keyCode === 13) {
+        Rename.save();
+      }
+    },
+
+    save: function(e) {
+      e && e.preventDefault();
+      Rename.done(true);
+    },
+
+    cancel: function() {
+      Rename.done(false);
+    },
+
+    done: function(shouldSave) {
+      if (!Rename.isRenaming) {
+        return;
+      }
+      var elInput = titleElem.querySelector('input'),
+          elDone = titleElem.querySelector('.done'),
+          newName = elInput.value,
+          nameChanged = newName && newName !== Rename.oldName;
+
+      elInput.removeEventListener('blur', Rename.cancel);
+      elInput.removeEventListener('keyup', Rename.onKeyUp);
+      elDone.removeEventListener(touchstart, Rename.save);
+      elInput.blur();
+      if (shouldSave && nameChanged) {
+        setTitle(newName);
+        setFolderNameOnHome(folderIcon.descriptor.bookmarkURL, newName);
+      } else {
+        setTitle(Rename.oldName);
+      }
+      Rename.isRenaming = false;
+      window.setTimeout(function() {
+        titleElem.addEventListener('click', Rename.start);
+      }, 0);
+    }
+  };
 
   function showUI() {
     folderElem.style.display = 'block';
@@ -457,7 +528,23 @@ var FolderViewer = (function() {
     folderElem.classList.remove('visible');
     folderElem.removeEventListener('contextmenu', noop);
     closeElem.removeEventListener('click', hideUI);
+    titleElem.removeEventListener('click', Rename.start);
     window.removeEventListener('hashchange', handleEvent);
+  }
+
+  function getFolderElemByURL(url) {
+    var query =
+      '.icon[data-is-folder="true"][data-bookmark-u-r-l="' + url + '"]';
+    return document.querySelector(query);
+  }
+
+  function setFolderNameOnHome(url, name) {
+    var folderElemOnHome = getFolderElemByURL(url);
+    var nameElem = folderElemOnHome.querySelector('span.labelWrapper > span');
+    nameElem.innerHTML = name;
+    folderIcon.descriptor.name = name;
+    // save state of homescreen
+    GridManager.markDirtyState();
   }
 
   function noop(evt) {
