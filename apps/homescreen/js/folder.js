@@ -535,7 +535,8 @@ var FolderViewer = (function() {
     var folderElemOnHome = getFolderElemByURL(url);
     var nameElem = folderElemOnHome.querySelector('span.labelWrapper > span');
     nameElem.innerHTML = name;
-    folderIcon.descriptor.name = name;
+    var descriptor = folderIcon.descriptor;
+    descriptor.name = descriptor.localizedName = name;
     // save state of homescreen
     GridManager.markDirtyState();
   }
