@@ -140,7 +140,6 @@ var FolderManager = (function() {
       }
       return false;
     default:
-      _clearState();
       console.log('state=' + state);
       break;
     }
@@ -200,7 +199,7 @@ var FolderManager = (function() {
 
   return {
     init: function(elem, x, y) {
-      if (!_isCollection(elem) || !_isFolder(elem)) {
+      if (!_isCollection(elem) && !_isFolder(elem)) {
         dragElem = elem;
         sx = x, sy = y;
         _clearState();
