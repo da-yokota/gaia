@@ -770,6 +770,7 @@ apps/homescreen/js/request.js
 apps/homescreen/js/save-bookmark.js
 apps/homescreen/js/state.js
 apps/homescreen/js/wallpaper.js
+apps/homescreen/js/folder.js
 apps/homescreen/test/marionette/install_bookmark_test.js
 apps/homescreen/test/marionette/lib/bookmark_editor.js
 apps/homescreen/test/marionette/lib/browser.js
