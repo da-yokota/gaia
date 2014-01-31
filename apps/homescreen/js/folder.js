@@ -29,6 +29,8 @@ var FolderManager = (function() {
   var sx, sy;
   var uuidBlob = new Blob();
   var state; // none/pending/done
+  var FOLDER_ICON_URL = window.location.protocol + '//' + window.location.host +
+                          '/style/images/folder-icon.png';
 
   function _setMark(elem) {
     elem.classList.add('hover');
@@ -174,7 +176,7 @@ var FolderManager = (function() {
           'id': uuid,
           'bookmarkURL': uuid,
           'name': 'Folder',
-          'icon': '',
+          'icon': FOLDER_ICON_URL,
           'iconable': false,
           'type': GridItemsFactory.TYPE.FOLDER,
           'holdApps': holdApps
