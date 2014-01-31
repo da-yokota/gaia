@@ -46,6 +46,8 @@ var Homescreen = (function() {
         // this happens when the user presses the 'home' button
         if (Homescreen.didEvmePreventHomeButton()) {
           // nothing to do here, just prevent any other actions
+        } else if (FolderViewer.hide()) {
+          // nothing to do here, just prevent any other actions
         } else if (Homescreen.isInEditMode()) {
           exitFromEditMode();
         } else {

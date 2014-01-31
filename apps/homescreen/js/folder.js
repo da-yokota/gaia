@@ -220,6 +220,7 @@ var FolderManager = (function() {
 var FolderViewer = (function() {
   var folderElem, headerElem, titleElem, closeElem, contentElem, appsElem;
   var folderIcon;
+  var isFolderView = false;
   var isTouch = 'ontouchstart' in window;
   var touchstart = isTouch ? 'touchstart' : 'mousedown';
   var touchmove = isTouch ? 'touchmove' : 'mousemove';
@@ -339,14 +340,6 @@ var FolderViewer = (function() {
       }
       break;
 
-    case 'hashchange': // push homebutton
-      if (Homescreen.isInEditMode()) {
-        Homescreen.setMode('normal');
-      } else {
-        hideUI();
-      }
-      break;
-
     case 'folderlaunch':
       LazyLoader.load(
         ['style/folder.css', document.getElementById('folder-page')],
@@ -426,7 +419,6 @@ var FolderViewer = (function() {
 
     closeElem.addEventListener('click', hideUI);
     titleElem.addEventListener('click', Rename.start);
-    window.addEventListener('hashchange', handleEvent);
     showUI();
   }
 
@@ -510,6 +502,7 @@ var FolderViewer = (function() {
       //Avoid to open contextmenu for wallpaer.
       folderElem.addEventListener('contextmenu', noop);
       folderElem.classList.add('visible');
+      isFolderView = true;
     }, 0);
   }
 
@@ -523,7 +516,7 @@ var FolderViewer = (function() {
     folderElem.removeEventListener('contextmenu', noop);
     closeElem.removeEventListener('click', hideUI);
     titleElem.removeEventListener('click', Rename.start);
-    window.removeEventListener('hashchange', handleEvent);
+    isFolderView = false;
   }
 
   function getFolderElemByURL(url) {
@@ -545,5 +538,16 @@ var FolderViewer = (function() {
   function noop(evt) {
     evt.stopPropagation();
   }
+
+  return {
+    hide: function() {
+      if (isFolderView) {
+        hideUI();
+        return true;
+      } else {
+        return false;
+      }
+    }
+  };
 })();
 
