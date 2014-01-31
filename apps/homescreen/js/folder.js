@@ -417,8 +417,6 @@ var FolderViewer = (function() {
     clearApps();
     setApps(descriptor.holdApps);
 
-    closeElem.addEventListener('click', hideUI);
-    titleElem.addEventListener('click', Rename.start);
     showUI();
   }
 
@@ -493,14 +491,15 @@ var FolderViewer = (function() {
   };
 
   function showUI() {
+    closeElem.addEventListener('click', hideUI);
+    titleElem.addEventListener('click', Rename.start);
+    folderElem.addEventListener('contextmenu', noop);
     folderElem.style.display = 'block';
     window.setTimeout(function() {
       headerElem.addEventListener('transitionend', function end(evt) {
         evt.target.removeEventListener('transitionend', end);
         document.dispatchEvent(new CustomEvent('folderopened'));
       });
-      //Avoid to open contextmenu for wallpaer.
-      folderElem.addEventListener('contextmenu', noop);
       folderElem.classList.add('visible');
       isFolderView = true;
     }, 0);
