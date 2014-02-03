@@ -547,7 +547,11 @@ var FolderViewer = (function() {
   return {
     hide: function() {
       if (isFolderView) {
-        hideUI();
+        if (mode === 'edit') {
+          setMode('normal');
+        } else {
+          hideUI();
+        }
         return true;
       } else {
         return false;
