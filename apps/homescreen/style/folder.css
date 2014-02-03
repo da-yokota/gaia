@@ -335,3 +335,6 @@ body[data-mode='edit'] .folderScope ul > li > img {
   border: 0px none;
 }
 
+#icongrid.folder-visible {
+  display: none;
+}

@@ -497,6 +497,8 @@ var FolderViewer = (function() {
 
   function showUI() {
     setMode('normal');
+    var icongridElem = document.getElementById('icongrid');
+    icongridElem.classList.add('folder-visible');
     closeElem.addEventListener('click', hideUI);
     titleElem.addEventListener('click', Rename.start);
     folderElem.addEventListener('contextmenu', noop);
@@ -513,6 +515,8 @@ var FolderViewer = (function() {
 
   function hideUI() {
     setMode('normal');
+    var icongridElem = document.getElementById('icongrid');
+    icongridElem.classList.remove('folder-visible');
     headerElem.addEventListener('transitionend', function end(evt) {
       evt.target.removeEventListener('transitionend', end);
       folderElem.style.display = 'none';
