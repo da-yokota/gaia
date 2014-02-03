@@ -221,6 +221,7 @@ var FolderViewer = (function() {
   var folderElem, headerElem, titleElem, closeElem, contentElem, appsElem;
   var folderIcon;
   var isFolderView = false;
+  var mode;
   var isTouch = 'ontouchstart' in window;
   var touchstart = isTouch ? 'touchstart' : 'mousedown';
   var touchmove = isTouch ? 'touchmove' : 'mousemove';
@@ -319,10 +320,10 @@ var FolderViewer = (function() {
       break;
 
     case touchend:
-      if (Homescreen.isInEditMode()) {
+      if (mode === 'edit') {
         if (target.classList.contains('remove')) {
           moveAppToHome(target.parentNode);
-          Homescreen.setMode('normal');
+          setMode('normal');
         }
       } else {
         var icon = GridManager.getIcon(evt.target.dataset);
@@ -334,9 +335,9 @@ var FolderViewer = (function() {
 
     case 'contextmenu': // long press
       if ('isIcon' in target.dataset) {
-        Homescreen.setMode('edit');
+        setMode('edit');
       } else {
-        Homescreen.setMode('normal');
+        setMode('normal');
       }
       break;
 
@@ -345,6 +346,10 @@ var FolderViewer = (function() {
         ['style/folder.css', document.getElementById('folder-page')],
         function() { doFolderLaunch(evt); });
     }
+  }
+
+  function setMode(newMode) {
+    mode = folderElem.dataset.mode = newMode;
   }
 
   function setTitle(title) {
@@ -491,6 +496,7 @@ var FolderViewer = (function() {
   };
 
   function showUI() {
+    setMode('normal');
     closeElem.addEventListener('click', hideUI);
     titleElem.addEventListener('click', Rename.start);
     folderElem.addEventListener('contextmenu', noop);
@@ -506,7 +512,7 @@ var FolderViewer = (function() {
   }
 
   function hideUI() {
-    Homescreen.setMode('normal');
+    setMode('normal');
     headerElem.addEventListener('transitionend', function end(evt) {
       evt.target.removeEventListener('transitionend', end);
       folderElem.style.display = 'none';

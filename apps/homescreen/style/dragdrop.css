@@ -57,7 +57,8 @@
 
 /* Image and label have shaking effect */
 body[data-mode = 'edit'] ol > li > div > img,
-#collection[data-mode = 'edit'] .evme-apps ul.static li .icon {
+#collection[data-mode = 'edit'] .evme-apps ul.static li .icon,
+#folder[data-mode = 'edit'] .folder-apps ul.static li .icon {
   -moz-animation-name: shake;
   -moz-animation-duration: .8s;
   -moz-transform-origin: 50% 50%;
