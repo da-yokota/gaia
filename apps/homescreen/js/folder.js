@@ -178,6 +178,7 @@ var FolderManager = (function() {
           'name': 'Folder',
           'icon': FOLDER_ICON_URL,
           'iconable': false,
+          'removable': false,
           'type': GridItemsFactory.TYPE.FOLDER,
           'holdApps': holdApps
         };
