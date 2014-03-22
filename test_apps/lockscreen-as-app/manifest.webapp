@@ -16,5 +16,11 @@
   "default_locale": "en-US",
   "icons": {
     "128": "/style/icons/Blank.png"
+  },
+  "connections": {
+    "lockscreencommsreverse": {
+      "description": "communication between lockscreen and System 2",
+      "rules": {}
+    }
   }
 }

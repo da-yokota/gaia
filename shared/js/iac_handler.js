@@ -12,6 +12,9 @@ var IACHandler = {
         var keyword = request.keyword;
         var port = request.port;
 
+        console.log(keyword);
+        console.log(port);
+
         // We will save each port by keyword; ports may get overwritten
         // sometimes, but that's ok because there should only be one *active*
         // port with a given keyword at any time.
@@ -19,6 +22,7 @@ var IACHandler = {
 
         port.onmessage = function onReceivedMessage(evt) {
           var message = evt.data;
+          console.log(message);
 
           /*
            * System will emit a event when received message
@@ -27,6 +31,7 @@ var IACHandler = {
            */
           var evtName = self._eventPrefix + keyword;
           var iacEvt = document.createEvent('CustomEvent');
+          console.log(evtName);
 
           /*
            * You can get the message by accessing

@@ -7,6 +7,9 @@ var LockScreen = function() {
   document.getElementById('camera')
     .addEventListener('click', this.onCamera.bind(this));
 
+  window.addEventListener('iac-lockscreencommsreverse',
+    this.onReceive);
+
   navigator.mozApps.getSelf().onsuccess = (function(evt) {
     var app = evt.target.result;
     app.connect('lockscreencomms').then(
@@ -38,6 +41,10 @@ LockScreen.prototype.onCamera = function() {
     cameraAppUrl.replace(/(\/)*(index.html)*$/, '/manifest.webapp');
   cameraAppUrl += '#secure';
   this.post('invoke-secureapp', cameraAppUrl, cameraAppManifestURL);
+};
+
+LockScreen.prototype.onReceive = function() {
+  console.log('<< Receive from Lockscreen');
 };
 
 LockScreen.prototype.post = function() {
